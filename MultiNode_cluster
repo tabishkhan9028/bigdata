@@ -1,0 +1,245 @@
+open powershell
+.\pscp.exe -i .\demo.ppk .\demo.pem ubuntu@publicip:/home/ubuntu/.ssh
+
+connect putty and then change permission of file
+chmod 400 /home/ubuntu/.ssh/demo.pem
+
+-------**configuring .profile
+nano ~/.profile
+eval `ssh-agent` ssh-add /home/ubuntu/.ssh/demo.pem
+
+source ~/.profile
+
+-------**adding hosts**---- (namenode , job tracker, secondary name node  and 3 data nodes)
+
+sudo nano /etc/hosts
+
+ip-172-31-23-8 nn
+ip-172-31-23-7 snn
+ip-172-31-23-10 dn1
+ip-172-31-23-9 dn2
+ip-172-31-23-10 dn3
+ip-172-31-23-9 jt
+
+ssh snn
+sudo nano /etc/hosts
+
+ip-172-31-23-8 nn
+ip-172-31-23-7 snn
+ip-172-31-23-10 dn1
+ip-172-31-23-9 dn2
+ip-172-31-23-10 dn3
+ip-172-31-23-9 jt
+
+exit from ssn
+
+ssh jt
+sudo nano /etc/hosts
+
+ip-172-31-23-8 nn
+ip-172-31-23-7 snn
+ip-172-31-23-10 dn1
+ip-172-31-23-9 dn2
+ip-172-31-23-10 dn3
+ip-172-31-23-9 jt
+
+exit from jt
+
+ssh dn1
+sudo nano /etc/hosts
+
+ip-172-31-23-8 nn
+ip-172-31-23-7 snn
+ip-172-31-23-10 dn1
+ip-172-31-23-9 dn2
+ip-172-31-23-10 dn3
+ip-172-31-23-9 jt
+
+exit dn1
+
+ssh dn2
+sudo nano /etc/hosts
+
+ip-172-31-23-8 nn
+ip-172-31-23-7 snn
+ip-172-31-23-10 dn1
+ip-172-31-23-9 dn2
+ip-172-31-23-10 dn3
+ip-172-31-23-9 jt
+
+exit dn2
+
+ssh dn3
+sudo nano /etc/hosts
+
+ip-172-31-23-8 nn
+ip-172-31-23-7 snn
+ip-172-31-23-10 dn1
+ip-172-31-23-9 dn2
+ip-172-31-23-10 dn3
+ip-172-31-23-9 jt
+
+exit dn3
+
+--------**installing and configuring dsh
+sudo apt update
+sudo apt-get install dsh
+
+cd /etc/dsh
+
+sudo nano machines.list
+
+nn
+snn
+jt
+dn1
+dn2
+dn3
+ 
+cd
+
+--------------**configuring bashrc linux env setup
+
+nano ~/.bashrc
+
+export HADOOP_PREFIX=/usr/local/hadoop/
+export PATH=$PATH:$HADOOP_PREFIX/bin
+export JAVA_HOME=/usr/lib/jvm/java-8-openjdk-amd64
+export PATH=$PATH:$JAVA_HOME
+
+-------**scp .pem .profile & .bashrc to all hosts**
+(run these commands one by one)
+
+scp .bashrc .profile ubuntu@snn:/home/ubuntu
+scp .bashrc .profile ubuntu@jt:/home/ubuntu
+scp .bashrc .profile ubuntu@dn1:/home/ubuntu
+scp .bashrc .profile ubuntu@dn2:/home/ubuntu
+scp .bashrc .profile ubuntu@dn3:/home/ubuntu
+
+key uploaded all machine-------------
+(run these commands one by one)
+
+scp .ssh/demo.pem ubuntu@snn:/home/ubuntu/.ssh
+scp .ssh/demo.pem ubuntu@jt:/home/ubuntu/.ssh
+scp .ssh/demo.pem ubuntu@dn1:/home/ubuntu/.ssh
+scp .ssh/demo.pem ubuntu@dn2:/home/ubuntu/.ssh
+scp .ssh/demo.pem ubuntu@dn3:/home/ubuntu/.ssh
+
+--------------**ececute bash and .profile
+
+dsh -a bash 
+
+dsh -a source ~/.profile
+
+-----------------------------**downloading hadoop
+
+
+dsh -a wget https://archive.apache.org/dist/hadoop/common/hadoop-1.2.1/hadoop-1.2.1.tar.gz
+
+dsh -a tar -xzvf hadoop-1.2.1.tar.gz
+
+dsh -a sudo mv hadoop-1.2.1 /usr/local/hadoop
+
+----------**downloading and installing java 
+
+
+dsh -a sudo apt-get update
+
+dsh -a sudo apt-get install openjdk-8-jdk -y
+
+------**setting hadoop env
+
+nano /usr/local/hadoop/conf/hadoop-env.sh
+
+export JAVA_HOME=/usr/lib/jvm/java-8-openjdk-amd64
+export HADOOP_OPTS=-Djava.net.preferIPV4Stack=true
+
+------**configuring xml's
+
+nano /usr/local/hadoop/conf/core-site.xml
+
+<property>
+<name>fs.default.name</name>
+<value>hdfs://nn:9000</value>
+</property>
+<property>
+<name>hadoop.tmp.dir</name>
+<value>/usr/local/hadoop/tmp</value>
+</property>
+
+nano /usr/local/hadoop/conf/hdfs-site.xml
+
+<property>
+<name>dfs.replication</name>
+<value>3</value>
+</property>
+<property> 
+<name>dfs.permissions</name> 
+<value>false</value> 
+</property>
+
+nano /usr/local/hadoop/conf/mapred-site.xml
+
+<property>
+<name>mapred.job.tracker</name>
+<value>hdfs://jt:9001</value>
+</property>
+
+---------------**configuring masters and slaves
+
+nano /usr/local/hadoop/conf/masters
+
+snn
+
+nano /usr/local/hadoop/conf/slaves
+
+dn1
+dn2
+dn3
+
+--------------** scp xml’s to all hosts
+
+cd /usr/local/hadoop/conf/
+
+(run these coomands one by one)
+
+scp  hadoop-env.sh core-site.xml hdfs-site.xml mapred-site.xml slaves ubuntu@snn:/usr/local/hadoop/conf/
+
+scp  hadoop-env.sh core-site.xml hdfs-site.xml mapred-site.xml slaves ubuntu@jt:/usr/local/hadoop/conf/
+
+scp  hadoop-env.sh core-site.xml hdfs-site.xml mapred-site.xml slaves ubuntu@dn3:/usr/local/hadoop/conf/
+
+scp  hadoop-env.sh core-site.xml hdfs-site.xml mapred-site.xml slaves ubuntu@dn1:/usr/local/hadoop/conf/
+
+scp  hadoop-env.sh core-site.xml hdfs-site.xml mapred-site.xml slaves ubuntu@dn2:/usr/local/hadoop/conf/
+
+
+----------**making tmp dir
+
+dsh -a mkdir /usr/local/hadoop/tmp
+
+
+-------------**exec bash
+
+dsh -a exec bash (or bash)
+
+----------------**formatting hadoop namenode
+
+hadoop namenode -format
+
+---------------**starting logical (mapreduce ) demons
+
+ssh jt
+start-mapred.sh 
+
+----------**starting dfs
+
+ssh nn 
+start-dfs.sh
+
+ 
+-------------------------**check java process
+
+dsh -a jps
+ 
+
